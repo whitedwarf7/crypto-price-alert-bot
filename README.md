@@ -9,7 +9,7 @@ A serverless Telegram bot that monitors cryptocurrency prices and sends alerts w
 
 ## Architecture Overview 🏗️
 
-![System Architecture](https://i.imgur.com/5KjJhQl.png)
+![System Architecture]
 
 ### Core Components
 - **AWS Lambda Functions**
