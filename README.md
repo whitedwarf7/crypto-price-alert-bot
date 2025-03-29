@@ -9,8 +9,6 @@ A serverless Telegram bot that monitors cryptocurrency prices and sends alerts w
 
 ## Architecture Overview 🏗️
 
-![System Architecture]
-
 ### Core Components
 - **AWS Lambda Functions**
   - `Telegram Webhook Handler`: Processes user commands (/setalert, /subscribe)
