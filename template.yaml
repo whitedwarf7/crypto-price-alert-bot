@@ -1,0 +1,75 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Crypto Price Alert Bot
+
+Resources:
+  TelegramWebhookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: telegram-webhook/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Environment:
+        Variables:
+          TELEGRAM_TOKEN: !Ref TelegramToken
+          STRIPE_PUBLIC_KEY: !Ref StripePublicKey
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /telegram
+            Method: POST
+
+  StripeWebhookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: stripe-webhook/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Environment:
+        Variables:
+          STRIPE_SECRET_KEY: !Ref StripeSecretKey
+          STRIPE_WEBHOOK_SECRET: !Ref StripeWebhookSecret
+
+  PriceCheckerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: price-checker/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Environment:
+        Variables:
+          TELEGRAM_TOKEN: !Ref TelegramToken
+      Events:
+        Schedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
+
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Users
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  AlertsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Alerts
+      AttributeDefinitions:
+        - AttributeName: alert_id
+          AttributeType: S
+        - AttributeName: user_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: alert_id
+          KeyType: HASH
+        - AttributeName: user_id
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST

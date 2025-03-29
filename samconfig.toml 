@@ -1,0 +1,4 @@
+PriceCheckerFunction:
+  Properties:
+    MemorySize: 2048  # Minimum for PyTorch
+    Timeout: 120      # Seconds (model loading can be slow)

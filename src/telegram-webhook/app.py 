@@ -1,0 +1,64 @@
+import os
+import json
+import boto3
+import requests
+from botocore.exceptions import ClientError
+
+dynamodb = boto3.resource('dynamodb')
+users_table = dynamodb.Table('Users')
+alerts_table = dynamodb.Table('Alerts')
+TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
+STRIPE_PUBLIC_KEY = os.environ['STRIPE_PUBLIC_KEY']
+
+def lambda_handler(event, context):
+    body = json.loads(event['body'])
+    message = body['message']['text']
+    chat_id = body['message']['chat']['id']
+    user_id = str(body['message']['from']['id'])
+    
+    # Handle /start
+    if message.startswith('/start'):
+        response = "Welcome! Use /setalert <crypto> <price> <above/below> to create alerts."
+    
+    # Handle /subscribe
+    elif message.startswith('/subscribe'):
+        # Check if user has an active subscription
+        user = users_table.get_item(Key={'user_id': user_id}).get('Item')
+        if user and user['subscription_status'] == 'active':
+            response = "You're already subscribed!"
+        else:
+            # Create Stripe Checkout Session
+            stripe_link = create_stripe_session(user_id)
+            response = f"Pay here: {stripe_link}"
+    
+    # Handle /setalert
+    elif message.startswith('/setalert'):
+        # Check subscription status
+        user = users_table.get_item(Key={'user_id': user_id}).get('Item')
+        if not user or user['subscription_status'] != 'active':
+            response = "Please subscribe first! Use /subscribe."
+        else:
+            # Parse command: /setalert BTC 50000 above
+            args = message.split()[1:]
+            crypto = args[0].upper()
+            target_price = float(args[1])
+            condition = args[2]
+            
+            # Save alert to DynamoDB
+            alerts_table.put_item(Item={
+                'alert_id': str(uuid.uuid4()),
+                'user_id': user_id,
+                'cryptocurrency': crypto,
+                'target_price': target_price,
+                'condition': condition,
+                'active': True,
+                'created_at': int(time.time())
+            })
+            response = f"Alert set for {crypto} {condition} ${target_price}!"
+    
+    # Send response to Telegram
+    requests.post(
+        f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+        json={'chat_id': chat_id, 'text': response}
+    )
+    return {'statusCode': 200}
